@@ -21,7 +21,6 @@ package org.jfugue.examples;
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
-
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -52,10 +51,11 @@ import org.jfugue.Player;
 
 import com.sun.media.sound.AudioSynthesizer;
 
-public class Midi2WavRenderer 
+public class Midi2WavRenderer
 {
+
     private Synthesizer synth;
-    
+
     public Midi2WavRenderer() throws MidiUnavailableException, InvalidMidiDataException, IOException
     {
         this.synth = MidiSystem.getSynthesizer();
@@ -64,16 +64,18 @@ public class Midi2WavRenderer
     private Soundbank loadSoundbank(File soundbankFile) throws MidiUnavailableException, InvalidMidiDataException, IOException
     {
         Soundbank soundbank = MidiSystem.getSoundbank(soundbankFile);
-        if (!synth.isSoundbankSupported(soundbank)) {
+        if (!synth.isSoundbankSupported(soundbank))
+        {
             throw new JFugueException("Soundbank not supported by synthesizer");
         }
         return soundbank;
     }
 
     /**
-     * Creates a WAV file based on the Pattern, using the sounds from the specified soundbank; 
-     * to prevent memory problems, this method asks for an array of patches (instruments) to load. 
-     * 
+     * Creates a WAV file based on the Pattern, using the sounds from the
+     * specified soundbank; to prevent memory problems, this method asks for an
+     * array of patches (instruments) to load.
+     *
      * @param soundbankFile
      * @param patches
      * @param pattern
@@ -88,14 +90,15 @@ public class Midi2WavRenderer
         Sequencer sequencer = Player.getSequencerConnectedToSynthesizer(synth);
         Player player = new Player(sequencer);
         Sequence sequence = player.getSequence(pattern);
-        
+
         createWavFile(soundbankFile, patches, sequence, outputFile);
     }
-    
+
     /**
-     * Creates a WAV file based on the Sequence, using the sounds from the specified soundbank; 
-     * to prevent memory problems, this method asks for an array of patches (instruments) to load.
-     *  
+     * Creates a WAV file based on the Sequence, using the sounds from the
+     * specified soundbank; to prevent memory problems, this method asks for an
+     * array of patches (instruments) to load.
+     *
      * @param soundbankFile
      * @param patches
      * @param sequence
@@ -108,20 +111,21 @@ public class Midi2WavRenderer
     {
         // Load soundbank
         Soundbank soundbank = loadSoundbank(soundbankFile);
-        
+
         // Open the Synthesizer and load the requested instruments
         this.synth.open();
         this.synth.unloadAllInstruments(soundbank);
-        for (int patch : patches) {
+        for (int patch : patches)
+        {
             this.synth.loadInstrument(soundbank.getInstrument(new Patch(0, patch)));
         }
-        
+
         createWavFile(sequence, outputFile);
     }
-    
-    /** 
+
+    /**
      * Creates a WAV file based on the Pattern, using the default soundbank.
-     *  
+     *
      * @param pattern
      * @param outputFile
      * @throws MidiUnavailableException
@@ -134,13 +138,13 @@ public class Midi2WavRenderer
         Sequencer sequencer = Player.getSequencerConnectedToSynthesizer(synth);
         Player player = new Player(sequencer);
         Sequence sequence = player.getSequence(pattern);
-        
+
         createWavFile(sequence, outputFile);
     }
 
     /**
      * Creates a WAV file based on the Sequence, using the default soundbank.
-     *  
+     *
      * @param sequence
      * @param outputFile
      * @throws MidiUnavailableException
@@ -150,7 +154,8 @@ public class Midi2WavRenderer
     public void createWavFile(Sequence sequence, File outputFile) throws MidiUnavailableException, InvalidMidiDataException, IOException
     {
         AudioSynthesizer synth = findAudioSynthesizer();
-        if (synth == null) {
+        if (synth == null)
+        {
             throw new JFugueException("No AudioSynthesizer was found!");
         }
 
@@ -172,83 +177,101 @@ public class Midi2WavRenderer
 
         this.synth.close();
     }
-        
 
-	/**
-	 * Find available AudioSynthesizer.
-	 */
-	private AudioSynthesizer findAudioSynthesizer() throws MidiUnavailableException 
-	{
-		// First check if default synthesizer is AudioSynthesizer.
-		Synthesizer synth = MidiSystem.getSynthesizer();
-		if (synth instanceof AudioSynthesizer) {
-			return (AudioSynthesizer)synth;
-		}
+    /**
+     * Find available AudioSynthesizer.
+     */
+    private AudioSynthesizer findAudioSynthesizer() throws MidiUnavailableException
+    {
+        // First check if default synthesizer is AudioSynthesizer.
+        Synthesizer synth = MidiSystem.getSynthesizer();
+        if (synth instanceof AudioSynthesizer)
+        {
+            return (AudioSynthesizer) synth;
+        }
 
-		// If default synthesizer is not AudioSynthesizer, check others.
-		MidiDevice.Info[] midiDeviceInfo = MidiSystem.getMidiDeviceInfo();
-		for (int i = 0; i < midiDeviceInfo.length; i++) {
-			MidiDevice dev = MidiSystem.getMidiDevice(midiDeviceInfo[i]);
-			if (dev instanceof AudioSynthesizer) {
-				return (AudioSynthesizer) dev;
-			}
-		}
+        // If default synthesizer is not AudioSynthesizer, check others.
+        MidiDevice.Info[] midiDeviceInfo = MidiSystem.getMidiDeviceInfo();
+        for (int i = 0; i < midiDeviceInfo.length; i++)
+        {
+            MidiDevice dev = MidiSystem.getMidiDevice(midiDeviceInfo[i]);
+            if (dev instanceof AudioSynthesizer)
+            {
+                return (AudioSynthesizer) dev;
+            }
+        }
 
-		// No AudioSynthesizer was found, return null.
-		return null;
-	}
+        // No AudioSynthesizer was found, return null.
+        return null;
+    }
 
-	/**
-	 * Send entry MIDI Sequence into Receiver using timestamps.
-	 */
-	private double send(Sequence seq, Receiver recv) 
-	{
-		float divtype = seq.getDivisionType();
-		assert (seq.getDivisionType() == Sequence.PPQ);
-		Track[] tracks = seq.getTracks();
-		int[] trackspos = new int[tracks.length];
-		int mpq = 500000;
-		int seqres = seq.getResolution();
-		long lasttick = 0;
-		long curtime = 0;
-		while (true) {
-			MidiEvent selevent = null;
-			int seltrack = -1;
-			for (int i = 0; i < tracks.length; i++) {
-				int trackpos = trackspos[i];
-				Track track = tracks[i];
-				if (trackpos < track.size()) {
-					MidiEvent event = track.get(trackpos);
-					if (selevent == null
-							|| event.getTick() < selevent.getTick()) {
-						selevent = event;
-						seltrack = i;
-					}
-				}
-			}
-			if (seltrack == -1)
-				break;
-			trackspos[seltrack]++;
-			long tick = selevent.getTick();
-			if (divtype == Sequence.PPQ)
-				curtime += ((tick - lasttick) * mpq) / seqres;
-			else
-				curtime = (long) ((tick * 1000000.0 * divtype) / seqres);
-			lasttick = tick;
-			MidiMessage msg = selevent.getMessage();
-			if (msg instanceof MetaMessage) {
-				if (divtype == Sequence.PPQ)
-					if (((MetaMessage) msg).getType() == 0x51) {
-						byte[] data = ((MetaMessage) msg).getData();
-						mpq = ((data[0] & 0xff) << 16)
-								| ((data[1] & 0xff) << 8) | (data[2] & 0xff);
-					}
-			} else {
-				if (recv != null)
-					recv.send(msg, curtime);
-			}
-		}
-		return curtime / 1000000.0;
-	}
+    /**
+     * Send entry MIDI Sequence into Receiver using timestamps.
+     */
+    private double send(Sequence seq, Receiver recv)
+    {
+        float divtype = seq.getDivisionType();
+        assert (seq.getDivisionType() == Sequence.PPQ);
+        Track[] tracks = seq.getTracks();
+        int[] trackspos = new int[tracks.length];
+        int mpq = 500000;
+        int seqres = seq.getResolution();
+        long lasttick = 0;
+        long curtime = 0;
+        while (true)
+        {
+            MidiEvent selevent = null;
+            int seltrack = -1;
+            for (int i = 0; i < tracks.length; i++)
+            {
+                int trackpos = trackspos[i];
+                Track track = tracks[i];
+                if (trackpos < track.size())
+                {
+                    MidiEvent event = track.get(trackpos);
+                    if (selevent == null
+                            || event.getTick() < selevent.getTick())
+                    {
+                        selevent = event;
+                        seltrack = i;
+                    }
+                }
+            }
+            if (seltrack == -1)
+            {
+                break;
+            }
+            trackspos[seltrack]++;
+            long tick = selevent.getTick();
+            if (divtype == Sequence.PPQ)
+            {
+                curtime += ((tick - lasttick) * mpq) / seqres;
+            } else
+            {
+                curtime = (long) ((tick * 1000000.0 * divtype) / seqres);
+            }
+            lasttick = tick;
+            MidiMessage msg = selevent.getMessage();
+            if (msg instanceof MetaMessage)
+            {
+                if (divtype == Sequence.PPQ)
+                {
+                    if (((MetaMessage) msg).getType() == 0x51)
+                    {
+                        byte[] data = ((MetaMessage) msg).getData();
+                        mpq = ((data[0] & 0xff) << 16)
+                                | ((data[1] & 0xff) << 8) | (data[2] & 0xff);
+                    }
+                }
+            } else
+            {
+                if (recv != null)
+                {
+                    recv.send(msg, curtime);
+                }
+            }
+        }
+        return curtime / 1000000.0;
+    }
 
 }
